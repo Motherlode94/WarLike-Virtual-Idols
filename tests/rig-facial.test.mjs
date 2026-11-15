@@ -34,5 +34,5 @@ test('rig UI exists and is wired',()=>{
  const js=readFileSync(new URL('../studio.js',import.meta.url),'utf8');
  for(const id of ['rigAudit','morphExpression','morphAmount','previewLipSync','resetCharacter','faceStatus'])assert.ok(html.includes('id="'+id+'"'));
  assert.match(js,/auditCharacter\(imported,clips\)/);
- assert.match(js,/applyFace\(/);
+ assert.match(js,/applyFacialLayers\(/);
 });
