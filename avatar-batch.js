@@ -32,6 +32,24 @@ export function validateBatch(files){
  if(total>MAX_BATCH_BYTES)throw Error('Le lot dépasse 180 Mio.');
  return list;
 }
+// Validate embedded GLB JSON before GLTFLoader touches any URI.
+// Rejects external resources to prevent unexpected network loads from user-imported files.
+export function inspectGLBContainer(buffer){
+ if(!(buffer instanceof ArrayBuffer)||buffer.byteLength<20)throw Error('Fichier GLB incomplet.');
+ const view=new DataView(buffer),magic=view.getUint32(0,true),version=view.getUint32(4,true),declared=view.getUint32(8,true);
+ if(magic!==0x46546c67||version!==2||declared!==buffer.byteLength)throw Error('En-tête GLB invalide ou taille incohérente.');
+ const jsonLength=view.getUint32(12,true),type=view.getUint32(16,true);
+ if(type!==0x4e4f534a||jsonLength<=0||jsonLength>buffer.byteLength-20)throw Error('Chunk JSON GLB invalide.');
+ let data;
+ try{data=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(buffer,20,jsonLength)))}catch{throw Error('JSON embarqué dans le GLB invalide.')}
+ if(data.asset?.version!=='2.0')throw Error('Version glTF non reconnue.');
+ const uris=[...(data.buffers||[]).map(x=>x.uri),...(data.images||[]).map(x=>x.uri)].filter(Boolean);
+ for(const uri of uris){
+  if(typeof uri!=='string'||!/^data:(?:image\/(?:png|jpeg|webp)|application\/octet-stream);base64,/i.test(uri))
+   throw Error('GLB contenant une ressource externe ou non autorisée : chargement bloqué.');
+ }
+ return {meshes:(data.meshes||[]).length,nodes:(data.nodes||[]).length,animations:(data.animations||[]).length,externalResources:0};
+}
 export function classifyReport(report){
  if(!report||REQUIRED_REPORT_FIELDS.some(key=>!report[key]))return {stage:'unverified',label:'Non analysé',blockers:['Rapport technique incomplet']};
  const blockers=[],warnings=[];
