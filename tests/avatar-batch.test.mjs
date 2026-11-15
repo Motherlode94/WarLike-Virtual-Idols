@@ -19,7 +19,7 @@ test('rejects external resources before passing GLB to Three.js',()=>{
 });
 test('rejects broken GLB headers and mismatched length',()=>{
  const buf=sampleGLB();new DataView(buf).setUint32(8,999,true);
- assert.throws(()=>inspectGLBContainer(buf),/en-tête/);
+ assert.throws(()=>inspectGLBContainer(buf),/en-tête/i);
  assert.throws(()=>inspectGLBContainer(new ArrayBuffer(6)),/incomplet/);
 });
 test('selects exactly one roster artist by filename without guessing',()=>{
