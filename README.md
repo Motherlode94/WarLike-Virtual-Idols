@@ -87,3 +87,19 @@ Le Character Lab contient désormais un **audit de lot jusqu'à 7 fichiers GLB**
 - Ne pas traiter ce diagnostic comme une validation de déformations réelles, de droit d'utilisation, de fidélité du visage ou de retargeting. Tester chaque modèle en animation et comparer les visuels sous plusieurs angles.
 
 Tests : `node --test tests/avatar-batch.test.mjs`. Tester également en navigateur avec les GLB réels du roster.
+
+
+## Synchronisation labiale V1 sur pistes audio réelles
+
+WarLike Idol Production Suite prend en charge un **fichier audio local** MP3/WAV/OGG/M4A/WebM pour animer les morph targets déjà présents sur un GLB :
+
+- Lecture via `HTMLAudioElement` et analyse en temps réel de l'enveloppe RMS via **Web Audio AnalyserNode**.
+- En l'absence de repères, ouverture de bouche approximative (`aa`) en fonction du niveau sonore. **Ce mode ne reconnaît pas les phonèmes ni les paroles.**
+- Import/export `warlike-idol-lipsync-v1` : repères manuels `start/end/viseme/strength` en secondes, contrôlés et non chevauchants. Le temps de lecture détermine les expressions ciblées A/E/O, sourire, clignement ou repos.
+- L'enveloppe audio et les repères animent les morph targets **existants**. Un modèle Meshy sans morph targets ne produira pas de mouvement labial correct : la création des visèmes requiert une étape supplémentaire (WarLike Rig Studio, Blender ou une solution de facial rigging validée).
+- Les fichiers audio ne sont pas téléversés ni intégrés dans le JSON des repères.
+- Aucun clonage vocal, transcription automatique, reconnaissance phonétique forcée ou synchronisation de chant au niveau professionnel n'est revendiqué.
+
+Pour un clip fini : créer les visèmes sur les sept visages, produire et autoriser les enregistrements originaux, préparer des pistes de visèmes synchronisées sur les voix isolées, puis valider l'animation avec la piste mixée et le GLB riggé.
+
+Tests : `node --test tests/audio-lipsync.test.mjs`. Un test avec un véritable enregistrement et un GLB doté de visèmes est encore nécessaire.
