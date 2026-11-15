@@ -16,6 +16,8 @@ jobs:
         run: |
           node --check app.js
           node --check studio.js
+          node --check avatar-quality.js
+          node --check avatar-batch.js
       - name: Verify site content and interactions
         run: node --test tests/*.test.mjs
       - name: Check site assets
@@ -26,6 +28,7 @@ jobs:
           test -s studio.html
           test -s studio.js
           test -s studio.css
+          test -s avatar-batch.js
           test -s assets/meshy-avatar-roster.json
           grep -q 'studio.js' studio.html
           grep -q 'styles.css' index.html

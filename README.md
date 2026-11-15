@@ -72,3 +72,34 @@ Une fois les modèles [Meshy référencés](assets/meshy-avatar-roster.json) té
 **Critères de production à vérifier réellement** : fidélité du visage sur plusieurs angles, proportions, coiffure, costumes, expression, jointures, qualité du skinning pendant le mouvement, IK des pieds, morph targets et visèmes. Les valeurs de l'audit sont des signaux techniques, pas une certification de production. Il n'y a pas encore de retargeting automatique, de génération de rig ni de correcteur de poids dans ce module.
 
 La génération Meshy réussie n'atteste pas du rigging. Ne pas classer les sept avatars comme prêts à animer avant tests de leurs fichiers GLB réels.
+
+
+## V3 — contrôle qualité du roster complet (Meshy / GLB)
+
+Le Character Lab contient désormais un **audit de lot jusqu'à 7 fichiers GLB**, pris depuis le navigateur, traités séquentiellement et limités à **40 Mio par fichier / 180 Mio par lot**.
+
+- Analyse indépendante : géométrie, matériaux, textures, os, skinning, animations et visèmes.
+- Statuts techniques distincts : `needs-rig`, `technical-review`, `technical-checks-passed`. Un statut favorable **ne signifie jamais « prêt à publier »**.
+- Identification de l'artiste à partir du nom du fichier lorsqu'il correspond sans ambiguïté au registre Meshy ; sinon, `Artiste à identifier`. Aucune affectation hasardeuse.
+- Export JSON global des résultats pour les transmettre au travail de correction dans Rig Studio.
+- Import individuel et par lot : contrôle du conteneur GLB (format glTF 2.0, longueur, chunk JSON) et blocage des **URI de buffers et d'images externes**. Les images intégrées admissibles doivent être des formats de données prévus ; les sources SVG et les liens externes sont rejetés.
+- Les GLB importés restent dans le navigateur. **Les fichiers ne sont pas envoyés à un serveur** par la fonctionnalité d'analyse ; l'application web doit malgré tout être soumise à un audit complet CSP, des extensions et des dépendances avant distribution publique.
+- Ne pas traiter ce diagnostic comme une validation de déformations réelles, de droit d'utilisation, de fidélité du visage ou de retargeting. Tester chaque modèle en animation et comparer les visuels sous plusieurs angles.
+
+Tests : `node --test tests/avatar-batch.test.mjs`. Tester également en navigateur avec les GLB réels du roster.
+
+
+## Synchronisation labiale V1 sur pistes audio réelles
+
+WarLike Idol Production Suite prend en charge un **fichier audio local** MP3/WAV/OGG/M4A/WebM pour animer les morph targets déjà présents sur un GLB :
+
+- Lecture via `HTMLAudioElement` et analyse en temps réel de l'enveloppe RMS via **Web Audio AnalyserNode**.
+- En l'absence de repères, ouverture de bouche approximative (`aa`) en fonction du niveau sonore. **Ce mode ne reconnaît pas les phonèmes ni les paroles.**
+- Import/export `warlike-idol-lipsync-v1` : repères manuels `start/end/viseme/strength` en secondes, contrôlés et non chevauchants. Le temps de lecture détermine les expressions ciblées A/E/O, sourire, clignement ou repos.
+- L'enveloppe audio et les repères animent les morph targets **existants**. Un modèle Meshy sans morph targets ne produira pas de mouvement labial correct : la création des visèmes requiert une étape supplémentaire (WarLike Rig Studio, Blender ou une solution de facial rigging validée).
+- Les fichiers audio ne sont pas téléversés ni intégrés dans le JSON des repères.
+- Aucun clonage vocal, transcription automatique, reconnaissance phonétique forcée ou synchronisation de chant au niveau professionnel n'est revendiqué.
+
+Pour un clip fini : créer les visèmes sur les sept visages, produire et autoriser les enregistrements originaux, préparer des pistes de visèmes synchronisées sur les voix isolées, puis valider l'animation avec la piste mixée et le GLB riggé.
+
+Tests : `node --test tests/audio-lipsync.test.mjs`. Un test avec un véritable enregistrement et un GLB doté de visèmes est encore nécessaire.

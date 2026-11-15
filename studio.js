@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {analyzeAvatar,serializeAvatarReport} from './avatar-quality.js';
+import {validateBatch,identifyArtist,classifyReport,summarizeBatch,inspectGLBContainer} from './avatar-batch.js';
+import {validateCues,activeCue,audioLevel,mappedMouth,cuesToDocument} from './audio-lipsync.js';
 import {auditCharacter,applyFace,phonemesForText} from './idol-rig.js';
 const $=selector=>document.querySelector(selector);
 const ARTISTS=[
@@ -40,6 +42,64 @@ async function loadMeshyRoster(){
   updateMeshyReference();
  }catch(error){$('#meshyModelStatus').textContent='Registre Meshy indisponible : '+error.message}
 }
+const batchRecords=[];
+let batchBusy=false;
+function addBatchResult(record){
+ const wrapper=$('#batchResults');
+ const item=document.createElement('article');item.className='batch-row';
+ const headline=document.createElement('strong');headline.textContent=record.artistName+' · '+record.filename;
+ const detail=document.createElement('p');detail.textContent=record.status==='error'?'Erreur : '+record.error:record.summary.label+' · '+record.report.geometry.triangles.toLocaleString('fr-FR')+' triangles · '+record.report.skeleton.boneCount+' os · '+record.report.appearance.textures+' textures';
+ const notes=document.createElement('p');notes.className='field-note';notes.textContent=record.summary?[...record.summary.blockers,...record.summary.warnings].join(' · ')||'Contrôles automatiques passés ; inspection manuelle requise.':'Aucun diagnostic exploitable';
+ item.append(headline,detail,notes);wrapper.append(item);
+}
+async function analyzeGLBBatch(){
+ if(batchBusy)return;
+ let files;
+ try{files=validateBatch($('#batchGlb').files)}catch(error){$('#batchProgress').textContent=error.message;return}
+ batchBusy=true;$('#runBatch').disabled=true;$('#exportBatch').disabled=true;batchRecords.length=0;$('#batchResults').replaceChildren();
+ try{
+  for(const [index,file] of files.entries()){
+   $('#batchProgress').textContent='Analyse '+(index+1)+'/'+files.length+' : '+file.name;
+   const artist=identifyArtist(file.name,[...meshyByArtist.values()]);
+   try{
+    const header=new Uint8Array(await file.slice(0,4).arrayBuffer());
+    if(header[0]!==0x67||header[1]!==0x6c||header[2]!==0x54||header[3]!==0x46)throw Error('Signature GLB invalide');
+    const data=await file.arrayBuffer();
+    inspectGLBContainer(data);
+    const gltf=await loader.parseAsync(data,'');
+    const report=analyzeAvatar(gltf.scene,gltf.animations||[]);
+    const summary=classifyReport(report);
+    const record={filename:file.name,artistId:artist.id,artistName:artist.name,status:'analyzed',summary,report};
+    batchRecords.push(record);addBatchResult(record);
+    // Parsing only for diagnostics: dispose GPU-friendly resources and avoid keeping seven scenes in memory.
+    const geometries=new Set(),materials=new Set(),textures=new Set();
+    gltf.scene.traverse(node=>{
+     if(node.geometry)geometries.add(node.geometry);
+     const nodeMaterials=Array.isArray(node.material)?node.material:node.material?[node.material]:[];
+     for(const mat of nodeMaterials){materials.add(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value)}
+    });
+    for(const geom of geometries)geom.dispose?.();
+    for(const tex of textures)tex.dispose?.();
+    for(const mat of materials)mat.dispose?.();
+   }catch(error){
+    const record={filename:file.name,artistId:artist.id,artistName:artist.name,status:'error',error:error.message};
+    batchRecords.push(record);addBatchResult(record);
+   }
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
+  const ok=batchRecords.filter(r=>r.status==='analyzed').length;
+  $('#batchProgress').textContent=ok+'/'+files.length+' GLB analysés · '+(files.length-ok)+' erreurs. Rapports non publiés.';
+  $('#exportBatch').disabled=!batchRecords.length;
+ }finally{batchBusy=false;$('#runBatch').disabled=false}
+}
+$('#runBatch').addEventListener('click',analyzeGLBBatch);
+$('#exportBatch').addEventListener('click',()=>{
+ if(!batchRecords.length)return;
+ const payload=summarizeBatch(batchRecords);
+ const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='warlike-seven-avatar-audit.json';link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+});
 $('#copyMeshyTask').addEventListener('click',async()=>{
  const entry=meshyByArtist.get($('#artist').value);if(!entry)return;
  try{await navigator.clipboard.writeText(entry.texturedTaskId);$('#meshyModelStatus').textContent='Identifiant Meshy copié pour '+entry.name+'.'}
@@ -61,6 +121,68 @@ function note(freq,when,length,shape='sine',gain=.045){const osc=audioContext.cr
 function stopMusic(){if(demoTimer){clearInterval(demoTimer);demoTimer=null}for(const osc of playingNodes)try{osc.stop()}catch{}playingNodes=[];$('#audioStatus').textContent='Motif arrêté.'}
 $('#playDemo').addEventListener('click',async()=>{try{stopMusic();audioContext ||=new (window.AudioContext||window.webkitAudioContext)();await audioContext.resume();const id=$('#artist').value,melody=patterns[id]||patterns.aeryn,root=roots[id]||220;let step=0;const tick=()=>{const at=audioContext.currentTime+.03;const semitone=melody[step%melody.length];note(root*Math.pow(2,semitone/12),at,.22,step%4===0?'triangle':'sine',.055);if(step%4===0)note(root/2,at,.45,'triangle',.027);step++};tick();demoTimer=setInterval(tick,310);$('#audioStatus').textContent='Motif inédit synthétisé pour '+selection().name+'. Maquette instrumentale, sans voix.'}catch(e){$('#audioStatus').textContent='Audio indisponible : '+e.message}});
 $('#stopDemo').addEventListener('click',stopMusic);
+
+let songURL=null,songContext=null,songSource=null,songAnalyser=null,songCues=[];
+const songPlayer=$('#songPlayer'),audioWave=new Float32Array(1024);
+const songStatus=message=>{$('#lipStatus').textContent=message};
+function showCueCount(){$('#cueSummary').textContent=songCues.length+' repère(s) horodaté(s) · '+(songCues.length?'synchronisation labiale guidée':'mouvement dépendant du volume sonore')}
+function resetSong(){
+ songPlayer.pause();songPlayer.removeAttribute('src');songPlayer.load();
+ if(songURL){URL.revokeObjectURL(songURL);songURL=null}
+ songCues=[];showCueCount();
+}
+$('#songAudio').addEventListener('change',event=>{
+ const file=event.target.files?.[0];if(!file)return;
+ if(file.size===0||file.size>40*1024*1024){songStatus('Fichier vide ou supérieur à 40 Mio.');event.target.value='';return}
+ if(!/\.(mp3|wav|ogg|webm|m4a|aac|flac)$/i.test(file.name)){songStatus('Format audio non autorisé.');event.target.value='';return}
+ resetSong();songURL=URL.createObjectURL(file);songPlayer.src=songURL; songStatus('Fichier audio local : '+file.name+' · lecture possible.');
+ event.target.value='';
+});
+songPlayer.addEventListener('play',async()=>{
+ try{
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(!Context)throw Error('Web Audio non disponible.');
+  if(!songContext){songContext=new Context();songAnalyser=songContext.createAnalyser();songAnalyser.fftSize=2048;songAnalyser.smoothingTimeConstant=.65;songSource=songContext.createMediaElementSource(songPlayer);songSource.connect(songAnalyser);songAnalyser.connect(songContext.destination)}
+  await songContext.resume();
+  songStatus('Lecture réelle à '+songPlayer.currentTime.toFixed(2)+' s · visèmes '+(songCues.length?'horodatés':'pilotés par le niveau audio')+'.');
+ }catch(error){songStatus('Audio/visèmes indisponibles : '+error.message)}
+});
+$('#cueFile').addEventListener('change',async event=>{
+ const file=event.target.files?.[0];if(!file)return;
+ try{
+  if(file.size>200000)throw Error('Le fichier dépasse 200 Ko.');
+  const data=JSON.parse(await file.text());
+  if(data.schema!=='warlike-idol-lipsync-v1')throw Error('Schéma de repères inconnu.');
+  songCues=validateCues(data.cues,Number.isFinite(songPlayer.duration)?songPlayer.duration:Infinity);
+  showCueCount();songStatus(songCues.length+' repère(s) importé(s).');
+ }catch(error){songStatus('Import des repères refusé : '+error.message)}
+ finally{event.target.value=''}
+});
+$('#cueAtPlayhead').addEventListener('click',()=>{$('#cueStart').value=songPlayer.currentTime.toFixed(2);$('#cueEnd').value=(songPlayer.currentTime+.2).toFixed(2)});
+$('#addCue').addEventListener('click',()=>{
+ try{
+  const cue={start:Number($('#cueStart').value),end:Number($('#cueEnd').value),viseme:$('#cueViseme').value,strength:1};
+  songCues=validateCues([...songCues,cue],Number.isFinite(songPlayer.duration)?songPlayer.duration:Infinity);
+  showCueCount();songStatus('Visème ajouté à '+cue.start.toFixed(2)+' s.');
+ }catch(error){songStatus('Repère refusé : '+error.message)}
+});
+$('#clearCues').addEventListener('click',()=>{songCues=[];showCueCount();songStatus('Repères effacés en mémoire, fichier source conservé.')});
+$('#saveCues').addEventListener('click',()=>{
+ const data=cuesToDocument(songCues,$('#artist').value);
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='warlike-'+$('#artist').value+'-visemes.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2500);
+ songStatus('Repères exportés (aucun fichier audio exporté).');
+});
+function syncSongMouth(){
+ if(!imported||songPlayer.paused||songPlayer.ended||!songPlayer.currentSrc)return;
+ let volume=0;
+ if(songAnalyser&&songContext?.state==='running'){songAnalyser.getFloatTimeDomainData(audioWave);volume=audioLevel(audioWave)}
+ const state=mappedMouth(songCues,songPlayer.currentTime,volume);
+ const changed=applyFace(state.viseme,imported,state.amount);
+ if(changed===0&&songPlayer.currentTime>0&&Math.floor(songPlayer.currentTime*2)%8===0)$('#lipStatus').textContent='Lecture audio active, mais aucun morph target compatible pour '+state.viseme+'.';
+}
+showCueCount();
+
 // Three.js procedural articulated mannequin and imported GLB clip playback.
 const viewport=$('#viewport'),scene=new THREE.Scene();scene.background=new THREE.Color('#141426');const camera=new THREE.PerspectiveCamera(42,1,.1,100);camera.position.set(0,2.5,7.3);camera.lookAt(0,1.8,0);
 const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));renderer.shadowMap.enabled=true;viewport.append(renderer.domElement);
@@ -89,8 +211,8 @@ function showAvatarAudit(report){const grid=$('#avatarMetrics'),list=$('#avatarI
 showAvatarAudit(null);
 $('#downloadAvatarAudit').addEventListener('click',()=>{if(!lastAudit)return;const report=serializeAvatarReport(lastAudit,$('#artist').value,lastFilename);const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download='warlike-avatar-'+$('#artist').value+'-audit.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),2000)});
 function tick(now){const t=now/1000,delta=Math.min(.06,(now-last)/1000);last=now;const type=motion.value;leftArm.rotation.z=type==='wave'?-.4-.65*Math.sin(t*7):type==='dance'?.4*Math.sin(t*5):type==='bow'?.05:.06;rightArm.rotation.z=type==='wave'?-1.4+.2*Math.cos(t*7):type==='dance'?-.4*Math.sin(t*5):type==='bow'?-.05:-.06;leftLeg.rotation.x=type==='dance'?.25*Math.sin(t*5):0;rightLeg.rotation.x=type==='dance'?-.25*Math.sin(t*5):0;root.rotation.z=type==='dance'?.045*Math.sin(t*5):0;root.rotation.x=type==='bow'?.45:0;root.position.y=type==='dance'?.05+.07*Math.abs(Math.sin(t*5)):.015*Math.sin(t*2);root.rotation.y=type==='dance'?.3*Math.sin(t*.65):0;
- if(mixer)mixer.update(delta);orbit.update();renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
-const loader=new GLTFLoader();$('#glb').addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;const url=URL.createObjectURL(file);try{if(file.size>40*1024*1024)throw Error('Limite de prévisualisation : 40 Mio.');const gltf=await loader.loadAsync(url);stopLipPreview();if(mixer)mixer.stopAllAction();mixer=null;if(imported)scene.remove(imported);imported=gltf.scene;const box=new THREE.Box3().setFromObject(imported);const size=box.getSize(new THREE.Vector3());if(Math.max(size.x,size.y,size.z)>0){const scale=2.75/Math.max(size.x,size.y,size.z);imported.scale.multiplyScalar(scale);const center=new THREE.Box3().setFromObject(imported).getCenter(new THREE.Vector3());imported.position.sub(center);imported.position.y+=1.6}scene.add(imported);root.visible=false;clips=gltf.animations||[];const audit=auditCharacter(imported,clips);lastAudit=analyzeAvatar(imported,clips);lastFilename=file.name;showAvatarAudit(lastAudit);frameAvatar();$('#rigAudit').textContent='Squelette : '+audit.boneCount+' os · Maillages skinnés : '+audit.skinnedMeshCount+' · Morph targets : '+audit.morphCount+' · Animations : '+audit.animationCount+' · Os standards absents : '+(audit.missingBones.join(', ')||'aucun')+' · Rig utilisable : '+(audit.usableRig?'oui':'à compléter');$('#faceStatus').textContent=audit.morphCount?'Morph targets détectés. Teste une expression ci-dessous.':'Aucun morph target facial : expression importée indisponible.';mixer=clips.length?new THREE.AnimationMixer(imported):null;$('#clip').replaceChildren(new Option('Aucune animation importée',''));clips.forEach((clip,i)=>$('#clip').add(new Option(clip.name||'Animation '+(i+1),String(i))));if(clips.length){mixer.clipAction(clips[0]).play();$('#clip').value='0'}$('#threeState').textContent='GLB chargé · '+clips.length+' animation(s) intégrée(s).';$('#morphExpression').value='neutral';}catch(error){$('#threeState').textContent='Import impossible : '+error.message}finally{URL.revokeObjectURL(url);event.target.value=''}});
+ if(mixer)mixer.update(delta);syncSongMouth();orbit.update();renderer.render(scene,camera);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+const loader=new GLTFLoader();$('#glb').addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;try{if(file.size>40*1024*1024)throw Error('Limite de prévisualisation : 40 Mio.');const bytes=await file.arrayBuffer();inspectGLBContainer(bytes);const gltf=await loader.parseAsync(bytes,'');stopLipPreview();if(mixer)mixer.stopAllAction();mixer=null;if(imported)scene.remove(imported);imported=gltf.scene;const box=new THREE.Box3().setFromObject(imported);const size=box.getSize(new THREE.Vector3());if(Math.max(size.x,size.y,size.z)>0){const scale=2.75/Math.max(size.x,size.y,size.z);imported.scale.multiplyScalar(scale);const center=new THREE.Box3().setFromObject(imported).getCenter(new THREE.Vector3());imported.position.sub(center);imported.position.y+=1.6}scene.add(imported);root.visible=false;clips=gltf.animations||[];const audit=auditCharacter(imported,clips);lastAudit=analyzeAvatar(imported,clips);lastFilename=file.name;showAvatarAudit(lastAudit);frameAvatar();$('#rigAudit').textContent='Squelette : '+audit.boneCount+' os · Maillages skinnés : '+audit.skinnedMeshCount+' · Morph targets : '+audit.morphCount+' · Animations : '+audit.animationCount+' · Os standards absents : '+(audit.missingBones.join(', ')||'aucun')+' · Rig utilisable : '+(audit.usableRig?'oui':'à compléter');$('#faceStatus').textContent=audit.morphCount?'Morph targets détectés. Teste une expression ci-dessous.':'Aucun morph target facial : expression importée indisponible.';mixer=clips.length?new THREE.AnimationMixer(imported):null;$('#clip').replaceChildren(new Option('Aucune animation importée',''));clips.forEach((clip,i)=>$('#clip').add(new Option(clip.name||'Animation '+(i+1),String(i))));if(clips.length){mixer.clipAction(clips[0]).play();$('#clip').value='0'}$('#threeState').textContent='GLB chargé · '+clips.length+' animation(s) intégrée(s).';$('#morphExpression').value='neutral';}catch(error){$('#threeState').textContent='Import impossible : '+error.message}finally{event.target.value=''}});
 function playImportedMotion(kind){
  if(!imported)return true;
  if(!mixer||!clips.length){$('#showStatus').textContent='GLB sans animation : seule la prévisualisation statique est possible. Ajoute un rig et des clips compatibles.';return false}
@@ -113,4 +235,4 @@ $('#lighting').addEventListener('change',()=>{const colors={violet:[0xdb81ff,0x8
 function stopShow(){if(showTimer!==null){clearInterval(showTimer);showTimer=null}motion.value='idle';$('#showStatus').textContent='Scène arrêtée.'}
 $('#startShow').addEventListener('click',()=>{stopShow();const sequence=$('#choreo').value.split(',');showStep=0;let allowed=true;const step=()=>{motion.value=sequence[showStep];if(!playImportedMotion(motion.value)){allowed=false;stopShow();$('#showStatus').textContent='Ce GLB ne dispose pas de clip correspondant à « '+sequence[showStep]+' » ; chorégraphie non lancée.';return}$('#showStatus').textContent='Séquence '+(showStep+1)+'/'+sequence.length+' — '+motion.selectedOptions[0].textContent;if(showStep===sequence.length-1){clearInterval(showTimer);showTimer=null}else showStep++};step();if(allowed&&sequence.length>1)showTimer=setInterval(step,2200)});
 $('#stopShow').addEventListener('click',stopShow);
-window.addEventListener('pagehide',()=>{stopShow();stopLipPreview();stopMusic();synth?.cancel();orbit.dispose();renderer.dispose()});
+window.addEventListener('pagehide',()=>{stopShow();stopLipPreview();stopMusic();resetSong();songContext?.close();synth?.cancel();orbit.dispose();renderer.dispose()});
