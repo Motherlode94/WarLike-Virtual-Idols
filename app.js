@@ -1,14 +1,44 @@
 'use strict';
-const members=[{name:'AERYN',status:'Membre provisoire',description:'Identité visuelle et profil musical à confirmer.'},...Array.from({length:6},(_,i)=>({name:'Identité à révéler',status:'Membre '+String(i+2).padStart(2,'0'),description:'Nom, voix et histoire à définir.'}))];
-const list=document.querySelector('#members');
-for(const [index,person] of members.entries()){
- const card=document.createElement('article');card.className='member';
- const portrait=document.createElement('div');portrait.className='portrait'+(index?' pending':'');portrait.textContent=index?'?':'A';portrait.setAttribute('aria-label',index?'Portrait non défini':'Portrait provisoire');
- const label=document.createElement('small');label.textContent=person.status.toUpperCase();
- const name=document.createElement('h3');name.textContent=person.name;
- const desc=document.createElement('p');desc.textContent=person.description;
- card.append(portrait,label,name,desc);list.append(card);
-}
-const toggle=document.querySelector('#menu');const nav=document.querySelector('#nav');
-toggle.addEventListener('click',()=>{const open=nav.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open))});
-nav.addEventListener('click',e=>{if(e.target.closest('a')){nav.classList.remove('open');toggle.setAttribute('aria-expanded','false')}});
+// Editorial profiles are provisional until the creator approves the final character sheets.
+// No fictional music, streams, video views, release dates or customer accounts are invented.
+const MEMBERS=[
+ {id:'aeryn',name:'AERYN',region:'RDC · Kinshasa',specialty:'chant',role:'Leader · Chant principal · R&B',genre:'R&B, pop contemporaine',identity:'Personnage féminin noir congolais',world:'Une présence magnétique, une voix expressive et une direction artistique afro-contemporaine.',palette:['#9160b2','#28192f'],symbol:'A',state:'Design en évolution'},
+ {id:'seoyun',name:'SEO-YUN',region:'Corée du Sud',specialty:'chant',role:'Main vocal · Dream-pop',genre:'Dream-pop, ballade, K-pop',identity:'Personnage coréen',world:'Textures vocales aériennes, refrains mélodiques et univers visuel lumineux.',palette:['#77a5d6','#252540'],symbol:'S',state:'Profil provisoire'},
+ {id:'zahra',name:'ZAHRA',region:'Maroc · Amazigh',specialty:'rap',role:'Rap · Hip-hop',genre:'Hip-hop, rythmes hybrides',identity:'Personnage marocain amazigh',world:'Flow affirmé et identité scénique urbaine, ancrée dans son univers musical.',palette:['#ce8a55','#432b34'],symbol:'Z',state:'Profil provisoire'},
+ {id:'meera',name:'MEERA',region:'Origine hispanique · Pays à préciser',specialty:'danse',role:'Danse · Fusion',genre:'Dance-pop, fusion',identity:'Personnage d’origine hispanique ; détails culturels à valider',world:'Énergie chorégraphique et mélanges de styles. La nouvelle identité visuelle est à définir.',palette:['#d67883','#522749'],symbol:'M',state:'Origine actualisée'},
+ {id:'noa',name:'NOA',region:'France',specialty:'composition',role:'Composition · Electro-pop',genre:'Electro-pop, synth-pop',identity:'Personnage français',world:'Création sonore, textures électroniques et direction mélodique.',palette:['#89a7bf','#293f51'],symbol:'N',state:'Profil provisoire'},
+ {id:'jasleen',name:'JASLEEN',region:'Inde · Pendjab',specialty:'chant',role:'Chant puissant · Pop-rock',genre:'Pop-rock, power pop',identity:'Personnage pendjabi',world:'Timbres énergiques, guitares et intensité vocale.',palette:['#c98d69','#493445'],symbol:'J',state:'Profil provisoire'},
+ {id:'hikari',name:'HIKARI',region:'Japon',specialty:'danse',role:'Danse · Synthwave',genre:'Dance-pop, synthwave',identity:'Personnage japonais',world:'Chorégraphies précises, néons et pop électronique.',palette:['#9b8de2','#282858'],symbol:'H',state:'Profil provisoire'}
+];
+const RELEASES=[]; // {id,title,artist,audioUrl,coverUrl,date,credits,license}
+const VIDEOS=[]; // {id,title,artist,url,date,credits}
+const TIMELINE=[
+ {title:'Le projet prend forme',description:'Définition d’un groupe de sept idoles virtuelles aux identités musicales distinctes.',status:'Concept'},
+ {title:'Direction artistique de AERYN',description:'Orientation vers une représentation plus nettement noire et congolaise.',status:'Direction visuelle'},
+ {title:'Évolution de MEERA',description:'Remplacement de la première orientation indienne par un personnage hispanique. Le pays et le design final restent à définir.',status:'Révision'},
+ {title:'Site vitrine et profils interactifs',description:'Présentation des artistes, recherche, filtres, favoris locaux et espace éditorial.',status:'Prototype'}
+];
+const $=q=>document.querySelector(q);
+const elements={members:$('#members'),count:$('#artistCount'),profile:$('#artistProfile'),search:$('#artistSearch'),filter:$('#artistFilter'),summary:$('#favoriteSummary')};
+const key='warlike-idol-favorites-v1';
+const valid=new Set(MEMBERS.map(m=>m.id));
+let favorites=new Set();
+try{const stored=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(stored))favorites=new Set(stored.filter(id=>valid.has(id)))}catch{}
+function node(tag,text,cls){const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e}
+function saveFavorites(){try{localStorage.setItem(key,JSON.stringify([...favorites]))}catch{setNotice('Les favoris ne peuvent pas être enregistrés dans ce navigateur.')}renderSummary()}
+function setNotice(text){const n=$('#artistCount');if(n)n.textContent=text}
+function renderSummary(){const names=MEMBERS.filter(m=>favorites.has(m.id)).map(m=>m.name);elements.summary.textContent=names.length?'Tes favoris : '+names.join(', '):'Aucun favori sélectionné.'}
+function profilePortrait(m){const portrait=node('div',m.symbol,'portrait');portrait.setAttribute('role','img');portrait.setAttribute('aria-label','Illustration typographique provisoire de '+m.name+', et non portrait officiel');portrait.style.setProperty('--idol-primary',m.palette[0]);portrait.style.setProperty('--idol-dark',m.palette[1]);return portrait}
+function makeFavoriteButton(m){const b=node('button',(favorites.has(m.id)?'♥ Dans mes favoris':'♡ Ajouter aux favoris'),'favorite-btn');b.type='button';b.setAttribute('aria-pressed',String(favorites.has(m.id)));b.addEventListener('click',()=>{if(favorites.has(m.id))favorites.delete(m.id);else favorites.add(m.id);saveFavorites();renderMembers();if(elements.profile.hidden===false&&elements.profile.dataset.member===m.id)showProfile(m.id,false)});return b}
+function card(m,i){const article=node('article',undefined,'member');article.append(profilePortrait(m));const tag=node('small','MEMBRE '+String(i+1).padStart(2,'0'));const name=node('h3',m.name);const region=node('p',m.region,'member-region');const role=node('p',m.role);const controls=node('div',undefined,'member-actions');const more=node('button','Voir le profil →','button-outline');more.type='button';more.addEventListener('click',()=>showProfile(m.id,true));controls.append(more,makeFavoriteButton(m));article.append(tag,name,region,role,controls);return article}
+function renderMembers(){const query=elements.search.value.trim().toLocaleLowerCase('fr'),filter=elements.filter.value;const shown=MEMBERS.filter(m=>(filter==='all'||m.specialty===filter)&&[m.name,m.region,m.role,m.genre].join(' ').toLocaleLowerCase('fr').includes(query));elements.members.replaceChildren();for(const m of shown)elements.members.append(card(m,MEMBERS.indexOf(m)));if(!shown.length)elements.members.append(node('p','Aucun artiste ne correspond à cette recherche.','notice'));elements.count.textContent=shown.length+' / '+MEMBERS.length+' artistes'}
+function showProfile(id,scroll){const m=MEMBERS.find(person=>person.id===id);if(!m)return;const box=elements.profile;box.replaceChildren();box.hidden=false;box.dataset.member=m.id;
+ const head=node('div',undefined,'profile-head');const h=node('div');h.append(node('p','DOSSIER ARTISTE · VERSION PROVISOIRE','overline'),node('h3',m.name),node('p',m.region));const close=node('button','Fermer ×','button-outline');close.type='button';close.addEventListener('click',()=>{box.hidden=true;box.replaceChildren();elements.search.focus()});head.append(h,close);
+ const body=node('div',undefined,'profile-body');const details=node('div');for(const [label,value] of [['Identité',m.identity],['Position dans le groupe',m.role],['Univers musical',m.genre],['Direction artistique',m.world],['Statut',m.state]]){const item=node('div',undefined,'profile-detail');item.append(node('span',label),node('strong',value));details.append(item)}
+ const portrait=profilePortrait(m);portrait.classList.add('profile-portrait');body.append(portrait,details);box.append(head,body,makeFavoriteButton(m));if(scroll){box.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});box.focus({preventScroll:true})}}
+elements.search.addEventListener('input',renderMembers);elements.filter.addEventListener('change',renderMembers);
+$('#resetFavorites').addEventListener('click',()=>{favorites.clear();saveFavorites();renderMembers();if(!elements.profile.hidden)showProfile(elements.profile.dataset.member,false)});
+function renderCatalog(items,container,kind){const list=$(container);list.replaceChildren();if(!items.length){const empty=node('div',undefined,'catalog-empty');empty.append(node('strong',kind==='audio'?'Aucune sortie musicale publiée':'Aucune vidéo publiée'),node('p','Le catalogue sera activé après validation des fichiers, crédits et autorisations.'));list.append(empty);return}for(const item of items){const a=node('article',undefined,'catalog-entry');a.append(node('h3',item.title),node('p',item.artist+' · '+(item.date||'Date à annoncer')));if(kind==='audio'&&item.audioUrl){const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src=item.audioUrl;a.append(audio)}else if(kind==='video'&&item.url){const link=node('a','Voir la performance ↗');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';a.append(link)}list.append(a)}}
+function renderTimeline(){const list=$('#projectTimeline');list.replaceChildren();for(const step of TIMELINE){const art=node('article',undefined,'timeline-item');art.append(node('small',step.status),node('h3',step.title),node('p',step.description));list.append(art)}}
+const toggle=$('#menu'),nav=$('#nav');toggle.addEventListener('click',()=>{const open=nav.classList.toggle('open');toggle.setAttribute('aria-expanded',String(open))});nav.addEventListener('click',e=>{if(e.target.closest('a')){nav.classList.remove('open');toggle.setAttribute('aria-expanded','false')}});
+renderMembers();renderSummary();renderCatalog(RELEASES,'#releaseCatalog','audio');renderCatalog(VIDEOS,'#videoCatalog','video');renderTimeline();
