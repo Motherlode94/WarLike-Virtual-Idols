@@ -57,3 +57,18 @@ Le studio ajoute un panneau d'audit des modèles GLB importés : comptage des os
 **Important :** les véritables avatars identitaires des sept artistes ne sont pas encore disponibles dans ce dépôt. Leur création réclame des fichiers source autorisés, une topologie/skinning corrects, les morph targets faciaux et des animations testées. Ne pas déclarer les profils et mannequins de démonstration comme des modèles finaux.
 
 Tests : `node --test tests/rig-facial.test.mjs` et `node --test tests/*.test.mjs`.
+
+
+## Avatar Quality Lab V2 (Meshy → WarLike)
+
+Une fois les modèles [Meshy référencés](assets/meshy-avatar-roster.json) téléchargés en GLB depuis le compte Meshy :
+
+1. Ouvrir `studio.html` et sélectionner le membre de WarLike SEVEN. Le studio affiche son identifiant Meshy permanent, sans URL CDN expirant.
+2. Importer le **GLB texturé localement**. Le Character Lab permet de tourner, déplacer et rapprocher la caméra, puis de recadrer le personnage.
+3. Consulter le rapport : nombre de triangles, sommets, matériaux, textures, os, maillages skinnés, clips d'animation, visèmes et morph targets. Des avertissements signalent les UV/normales manquants, les poids de skinning invalides et les budgets indicatifs dépassés.
+4. Exporter un **rapport JSON** pour les corrections de WarLike Rig Studio et pour une revue technique.
+5. Pour les clips et concerts, le studio essaie de trouver un clip nommé Idle, Wave, Dance ou Bow. Si le GLB n'a pas de clip correspondant, la chorégraphie est refusée avec un message explicite : **aucune animation n'est inventée**.
+
+**Critères de production à vérifier réellement** : fidélité du visage sur plusieurs angles, proportions, coiffure, costumes, expression, jointures, qualité du skinning pendant le mouvement, IK des pieds, morph targets et visèmes. Les valeurs de l'audit sont des signaux techniques, pas une certification de production. Il n'y a pas encore de retargeting automatique, de génération de rig ni de correcteur de poids dans ce module.
+
+La génération Meshy réussie n'atteste pas du rigging. Ne pas classer les sept avatars comme prêts à animer avant tests de leurs fichiers GLB réels.
