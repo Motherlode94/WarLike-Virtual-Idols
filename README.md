@@ -1,22 +1,31 @@
-# WarLike Virtual Idol
+# WarLike Virtual Idols — SEVEN
 
-Site vitrine statique de l'univers **WarLike SEVEN** (7 membres prévus), par WarLike Corps.
+Site vitrine **statique**, en français, de WarLike Virtual Idol / WarLike Corps.
 
-## Fonctionnel
-- Accueil responsive, navigation clavier/mobile.
-- Section artistes générée à partir de `app.js`.
-- Sections musique, performances et communauté.
-- Aucune collecte de données, aucune API ou dépendance CDN.
-- Design sombre utilisant la pile de typographies WarLike, avec repli système.
+## Fonctionnalités
+- Sept profils artistes : AERYN, SEO-YUN, ZAHRA, MEERA, NOA, JASLEEN, HIKARI ; toutes les fiches restent éditorialement provisoires.
+- AERYN orientée vers une identité noire congolaise. MEERA est désormais décrite comme hispanique (pays et détails culturels non arrêtés).
+- Recherche des artistes par nom, localisation et style ; filtre par spécialité ; fiches détaillées accessibles depuis chaque carte.
+- Favoris enregistrés **uniquement dans le stockage local du navigateur**, avec bouton de remise à zéro. Aucune donnée n'est envoyée à un serveur.
+- Catalogue audio et vidéo prêt pour des contenus **réels** : fichiers, crédits et autorisations doivent être ajoutés avant l'activation.
+- Journal du projet, FAQ et navigation mobile.
+- Aucun compte utilisateur, paiement, abonnement, diffusion audio fictive ou intégration WarLike Keys prétendument opérationnelle.
 
-## Contenu à finaliser
-Les six identités non annoncées sont des placeholders. **AERYN est indiqué comme provisoire** : ne pas annoncer le canon visuel, la discographie, les clips ou les dates de lancement sans validation.
+## Exécuter et tester
+```sh
+python3 -m http.server 8000
+node --check app.js
+node --test tests/site-contract.test.mjs
+```
 
-## Prévisualisation
-Ouvrir `index.html` ou servir le dossier avec `python -m http.server 8000`. Pour Cloudflare Pages, utiliser le dossier racine sans commande de build et publier la branche validée.
+Utiliser ensuite http://localhost:8000. Tester le clavier, la recherche, les filtres et les favoris, notamment avec le stockage local désactivé. Le site fonctionne sans installation de dépendances npm et sans appel à un CDN.
 
-## Vérifications
-`node --check app.js`, contrôles des ancres et de l'intégrité des ressources HTML/CSS/JS, test manuel à 360 px / 768 px / 1440 px, clavier, et liens.
+## Ajouter une sortie officielle
+Dans `app.js`, renseigner `RELEASES` avec `id,title,artist,audioUrl,coverUrl,date,credits,license` (ou `VIDEOS` pour les performances). Publier seulement des fichiers pour lesquels WarLike Corps dispose des droits, et privilégier une URL relative du même domaine ou un hébergement contrôlé. Revoir la CSP avant tout embed externe. La simple création de ces métadonnées n'est pas un back-office.
 
-## Étapes suivantes
-Fiches d'artistes détaillées après validation du canon, catalogue audio original avec métadonnées et droits, clips réels, intégration facultative WarLike Keys / Server lorsque l'authentification aura été auditée.
+## Roadmap
+1. Valider les sept fiches, leurs origines, leur langue, les biographies et l'apparence des avatars avec le créateur.
+2. Ajouter une galerie de portraits et un média kit avec crédits, consentements et licences.
+3. Produire de véritables chansons, chorégraphies et clips ; ajouter paroles, sous-titres et crédits.
+4. Construire une administration authentifiée avec WarLike Keys, Server, R2/D1, validation éditoriale et audit de sécurité.
+5. Intégrer la communauté, la billetterie, les notifications et une publication progressive.
