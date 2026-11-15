@@ -24,7 +24,28 @@ $('#editor').addEventListener('submit',event=>{event.preventDefault();const m=se
 $('#exportJson').addEventListener('click',()=>{const data=JSON.stringify({schema:'warlike-idol-editor-v1',exportedAt:new Date().toISOString(),artists:[...artists.values()]},null,2);const url=URL.createObjectURL(new Blob([data],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='warlike-idol-artists-draft.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);$('#adminStatus').textContent='Export JSON téléchargé : archive de brouillons, non publication.'});
 $('#importJson').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>200000)throw Error('Fichier trop volumineux (200 Ko maximum).');const parsed=JSON.parse(await file.text());if(parsed.schema!=='warlike-idol-editor-v1'||!Array.isArray(parsed.artists))throw Error('Schéma JSON non reconnu.');for(const obj of parsed.artists){if(!obj||typeof obj.id!=='string'||!artists.has(obj.id))continue;const a=artists.get(obj.id);for(const key of ['name','role','region','bio'])if(typeof obj[key]==='string')a[key]=obj[key].slice(0,key==='bio'?1200:120);if(['draft','review','approved'].includes(obj.status))a.status=obj.status}persist();for(const o of $('#artist').options)o.textContent=artists.get(o.value).name;fillForm();$('#adminStatus').textContent='Catalogue importé dans ce navigateur uniquement.'}catch(error){$('#adminStatus').textContent='Import refusé : '+error.message}finally{e.target.value=''}});
 $('#resetDraft').addEventListener('click',()=>{if(!confirm('Effacer tous les brouillons locaux des sept artistes ?'))return;try{localStorage.removeItem(STORE)}catch{}for(const [id,name,role,region] of ARTISTS)artists.set(id,{id,name,role,region,bio:'Profil artistique en préparation.',status:'draft'});for(const o of $('#artist').options)o.textContent=artists.get(o.value).name;fillForm();$('#adminStatus').textContent='Brouillons effacés.'});
-$('#artist').addEventListener('change',()=>{fillForm();setTint();updateVoiceChoice()});fillForm();
+let meshyByArtist=new Map();
+function updateMeshyReference(){
+ const artist=$('#artist').value,entry=meshyByArtist.get(artist),button=$('#copyMeshyTask');
+ button.disabled=!entry;
+ $('#meshyModelStatus').textContent=entry?'Modèle texturé Meshy de '+entry.name+' · tâche '+entry.texturedTaskId+' · rig et expressions non vérifiés.':'Aucune référence Meshy vérifiée pour cet artiste.';
+}
+async function loadMeshyRoster(){
+ try{
+  const response=await fetch('./assets/meshy-avatar-roster.json',{cache:'no-store'});
+  if(!response.ok)throw Error('registre introuvable');
+  const registry=await response.json();
+  if(registry.schema!=='warlike-idol-meshy-assets-v1'||!Array.isArray(registry.characters))throw Error('registre invalide');
+  meshyByArtist=new Map(registry.characters.filter(c=>/^[a-z0-9-]+$/.test(c.id)&&/^[0-9a-f-]{36}$/.test(c.texturedTaskId)).map(c=>[c.id,c]));
+  updateMeshyReference();
+ }catch(error){$('#meshyModelStatus').textContent='Registre Meshy indisponible : '+error.message}
+}
+$('#copyMeshyTask').addEventListener('click',async()=>{
+ const entry=meshyByArtist.get($('#artist').value);if(!entry)return;
+ try{await navigator.clipboard.writeText(entry.texturedTaskId);$('#meshyModelStatus').textContent='Identifiant Meshy copié pour '+entry.name+'.'}
+ catch{$('#meshyModelStatus').textContent='Copie non autorisée. Identifiant : '+entry.texturedTaskId}
+});
+$('#artist').addEventListener('change',()=>{fillForm();setTint();updateVoiceChoice();updateMeshyReference()});fillForm();loadMeshyRoster();
 // Local speech synthesis prototype, not trained or cloned voices.
 const synth=window.speechSynthesis,voiceSelect=$('#voice');
 function refreshVoices(){if(!synth)return;const before=voiceSelect.value;voiceSelect.replaceChildren(new Option('Voix du système',''));for(const v of synth.getVoices()){const opt=new Option(v.name+' · '+v.lang,v.voiceURI);voiceSelect.add(opt)}if([...voiceSelect.options].some(o=>o.value===before))voiceSelect.value=before}
