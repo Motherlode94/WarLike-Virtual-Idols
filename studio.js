@@ -150,6 +150,7 @@ songPlayer.addEventListener('play',async()=>{
   songStatus('Lecture réelle à '+songPlayer.currentTime.toFixed(2)+' s · visèmes '+(songCues.length?'horodatés':'pilotés par le niveau audio')+'.');
  }catch(error){songStatus('Audio/visèmes indisponibles : '+error.message)}
 });
+for(const eventName of ['pause','ended'])songPlayer.addEventListener(eventName,()=>{facialMouth='neutral';facialMouthAmount=0;updateFacialModel()});
 $('#cueFile').addEventListener('change',async event=>{
  const file=event.target.files?.[0];if(!file)return;
  try{
