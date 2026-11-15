@@ -29,3 +29,22 @@ Dans `app.js`, renseigner `RELEASES` avec `id,title,artist,audioUrl,coverUrl,dat
 3. Produire de véritables chansons, chorégraphies et clips ; ajouter paroles, sous-titres et crédits.
 4. Construire une administration authentifiée avec WarLike Keys, Server, R2/D1, validation éditoriale et audit de sécurité.
 5. Intégrer la communauté, la billetterie, les notifications et une publication progressive.
+
+
+## Idol Production Suite (prototype)
+
+Ouvrir `studio.html` pour accéder aux quatre modules :
+
+1. **Character Lab** — personnage 3D articulé construit avec Three.js, expressions simples, mouvements de démonstration, import GLB local avec lecture des animations embarquées. Ce mannequin n'est pas un avatar final skinné.
+2. **Vocal & Song Lab** — synthèse vocale fournie par le navigateur, avec tentative de choix d'une voix adaptée à la langue de chaque artiste ; mélodies originales synthétisées avec Web Audio. Les voix peuvent être absentes selon le système, et les motifs ne sont pas des chansons publiées.
+3. **Live Stage** — éclairages sélectionnables et séquences de quatre mouvements sur le mannequin, pas de streaming, billetterie ni performances multicaméras.
+4. **Editorial Desk** — brouillons des sept artistes conservés en localStorage, import/export JSON, états `draft`, `review`, `approved`. Le statut `approved` ne publie rien et ne constitue pas une authentification. Pas de secrets ou données privées dans cet outil.
+
+### Contraintes et prochaines étapes
+- L'interface charge la bibliothèque Three.js depuis un CDN versionné ; une connexion réseau est requise pour cette première version. Pour un déploiement autonome, la vendorer localement et contrôler la CSP.
+- L'import GLB ne convertit pas automatiquement un modèle non riggé en personnage animé ; les animations internes sont lues seulement lorsqu'elles existent.
+- Pour des avatars prêts à produire : morph targets faciaux (visèmes/expressions), skinning, retargeting, IK, import/export via WarLike Rig Studio/Engine.
+- Pour de vraies productions : sessions de WarLike Studio, prise de voix, vérification des droits, mastering, clips montés et chorégraphies validées.
+- Avant toute administration publique : branchement WarLike Keys, contrôle RBAC côté serveur, journal d'audit, permissions médias R2/D1, sauvegardes, modération et validation des publications.
+
+Tests : `node --check studio.js` puis `node --test tests/*.test.mjs`. Valider aussi les parcours WebGL, audio et GLB dans un navigateur réel avant fusion.
