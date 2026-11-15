@@ -72,3 +72,18 @@ Une fois les modèles [Meshy référencés](assets/meshy-avatar-roster.json) té
 **Critères de production à vérifier réellement** : fidélité du visage sur plusieurs angles, proportions, coiffure, costumes, expression, jointures, qualité du skinning pendant le mouvement, IK des pieds, morph targets et visèmes. Les valeurs de l'audit sont des signaux techniques, pas une certification de production. Il n'y a pas encore de retargeting automatique, de génération de rig ni de correcteur de poids dans ce module.
 
 La génération Meshy réussie n'atteste pas du rigging. Ne pas classer les sept avatars comme prêts à animer avant tests de leurs fichiers GLB réels.
+
+
+## V3 — contrôle qualité du roster complet (Meshy / GLB)
+
+Le Character Lab contient désormais un **audit de lot jusqu'à 7 fichiers GLB**, pris depuis le navigateur, traités séquentiellement et limités à **40 Mio par fichier / 180 Mio par lot**.
+
+- Analyse indépendante : géométrie, matériaux, textures, os, skinning, animations et visèmes.
+- Statuts techniques distincts : `needs-rig`, `technical-review`, `technical-checks-passed`. Un statut favorable **ne signifie jamais « prêt à publier »**.
+- Identification de l'artiste à partir du nom du fichier lorsqu'il correspond sans ambiguïté au registre Meshy ; sinon, `Artiste à identifier`. Aucune affectation hasardeuse.
+- Export JSON global des résultats pour les transmettre au travail de correction dans Rig Studio.
+- Import individuel et par lot : contrôle du conteneur GLB (format glTF 2.0, longueur, chunk JSON) et blocage des **URI de buffers et d'images externes**. Les images intégrées admissibles doivent être des formats de données prévus ; les sources SVG et les liens externes sont rejetés.
+- Les GLB importés restent dans le navigateur. **Les fichiers ne sont pas envoyés à un serveur** par la fonctionnalité d'analyse ; l'application web doit malgré tout être soumise à un audit complet CSP, des extensions et des dépendances avant distribution publique.
+- Ne pas traiter ce diagnostic comme une validation de déformations réelles, de droit d'utilisation, de fidélité du visage ou de retargeting. Tester chaque modèle en animation et comparer les visuels sous plusieurs angles.
+
+Tests : `node --test tests/avatar-batch.test.mjs`. Tester également en navigateur avec les GLB réels du roster.
