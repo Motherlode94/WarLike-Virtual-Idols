@@ -1,0 +1,85 @@
+{
+  "schema": "warlike-idol-meshy-assets-v1",
+  "updated": "2026-11-15",
+  "notes": "All are textured model generations. Meshy completion does not certify skinning, skeletal bones or blendshapes; validate each GLB with WarLike Idol Character Lab. Meshy preview/download URLs expire, task IDs are durable.",
+  "characters": [
+    {
+      "id": "aeryn",
+      "name": "AERYN",
+      "previewTaskId": "01a1e125-ac5a-7046-9a13-585f328a07b8",
+      "texturedTaskId": "01a1e163-1068-714a-901b-9bf4c62b0583",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    },
+    {
+      "id": "seoyun",
+      "name": "SEO-YUN",
+      "previewTaskId": "01a1e125-bd71-770b-b363-2b1d12d3c06d",
+      "texturedTaskId": "01a1e163-1f7d-701b-ae15-2fad6ce5eb19",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    },
+    {
+      "id": "zahra",
+      "name": "ZAHRA",
+      "previewTaskId": "01a1e125-d518-7016-9daf-f2284d2c5918",
+      "texturedTaskId": "01a1e163-2dde-715d-9e6a-9aba4bdff462",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    },
+    {
+      "id": "meera",
+      "name": "MEERA",
+      "previewTaskId": "01a1e163-8d64-7337-8f1f-a05020086a9a",
+      "texturedTaskId": "01a1e164-0365-72e4-9423-c6f61631cf57",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified",
+      "notes": "Corrected Hispanic-heritage concept. Previous Indian-heritage draft is obsolete and is not assigned."
+    },
+    {
+      "id": "noa",
+      "name": "NOA",
+      "previewTaskId": "01a1e125-f316-76cb-8e77-c68b34855d5d",
+      "texturedTaskId": "01a1e163-3e49-7401-936c-34a2f4e954a5",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    },
+    {
+      "id": "jasleen",
+      "name": "JASLEEN",
+      "previewTaskId": "01a1e126-031d-7481-80ec-9def5f9b1af0",
+      "texturedTaskId": "01a1e163-4df8-757b-8c7c-1f72f3608241",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    },
+    {
+      "id": "hikari",
+      "name": "HIKARI",
+      "previewTaskId": "01a1e126-12c0-7014-bcaa-72a3f31208c9",
+      "texturedTaskId": "01a1e163-5ca5-73dc-83e4-f0c8700d7db9",
+      "geometry": "meshy-t2.5",
+      "texture": "meshy-7",
+      "status": "textured",
+      "rig": "unverified",
+      "expressions": "unverified"
+    }
+  ]
+}
