@@ -14,6 +14,8 @@ jobs:
           node-version: '22'
       - name: Check JavaScript syntax
         run: node --check app.js
+      - name: Verify site content and interactions
+        run: node --test tests/site-contract.test.mjs
       - name: Check site assets
         run: |
           test -s index.html
