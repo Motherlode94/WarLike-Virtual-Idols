@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {analyzeAvatar,serializeAvatarReport} from './avatar-quality.js';
+import {validateBatch,identifyArtist,classifyReport,summarizeBatch} from './avatar-batch.js';
 import {auditCharacter,applyFace,phonemesForText} from './idol-rig.js';
 const $=selector=>document.querySelector(selector);
 const ARTISTS=[
@@ -40,6 +41,63 @@ async function loadMeshyRoster(){
   updateMeshyReference();
  }catch(error){$('#meshyModelStatus').textContent='Registre Meshy indisponible : '+error.message}
 }
+const batchRecords=[];
+let batchBusy=false;
+function addBatchResult(record){
+ const wrapper=$('#batchResults');
+ const item=document.createElement('article');item.className='batch-row';
+ const headline=document.createElement('strong');headline.textContent=record.artistName+' · '+record.filename;
+ const detail=document.createElement('p');detail.textContent=record.status==='error'?'Erreur : '+record.error:record.summary.label+' · '+record.report.geometry.triangles.toLocaleString('fr-FR')+' triangles · '+record.report.skeleton.boneCount+' os · '+record.report.appearance.textures+' textures';
+ const notes=document.createElement('p');notes.className='field-note';notes.textContent=record.summary?[...record.summary.blockers,...record.summary.warnings].join(' · ')||'Contrôles automatiques passés ; inspection manuelle requise.':'Aucun diagnostic exploitable';
+ item.append(headline,detail,notes);wrapper.append(item);
+}
+async function analyzeGLBBatch(){
+ if(batchBusy)return;
+ let files;
+ try{files=validateBatch($('#batchGlb').files)}catch(error){$('#batchProgress').textContent=error.message;return}
+ batchBusy=true;$('#runBatch').disabled=true;$('#exportBatch').disabled=true;batchRecords.length=0;$('#batchResults').replaceChildren();
+ try{
+  for(const [index,file] of files.entries()){
+   $('#batchProgress').textContent='Analyse '+(index+1)+'/'+files.length+' : '+file.name;
+   const artist=identifyArtist(file.name,[...meshyByArtist.values()]);
+   try{
+    const header=new Uint8Array(await file.slice(0,4).arrayBuffer());
+    if(header[0]!==0x67||header[1]!==0x6c||header[2]!==0x54||header[3]!==0x46)throw Error('Signature GLB invalide');
+    const data=await file.arrayBuffer();
+    const gltf=await loader.parseAsync(data,'');
+    const report=analyzeAvatar(gltf.scene,gltf.animations||[]);
+    const summary=classifyReport(report);
+    const record={filename:file.name,artistId:artist.id,artistName:artist.name,status:'analyzed',summary,report};
+    batchRecords.push(record);addBatchResult(record);
+    // Parsing only for diagnostics: dispose GPU-friendly resources and avoid keeping seven scenes in memory.
+    const geometries=new Set(),materials=new Set(),textures=new Set();
+    gltf.scene.traverse(node=>{
+     if(node.geometry)geometries.add(node.geometry);
+     const nodeMaterials=Array.isArray(node.material)?node.material:node.material?[node.material]:[];
+     for(const mat of nodeMaterials){materials.add(mat);for(const value of Object.values(mat))if(value?.isTexture)textures.add(value)}
+    });
+    for(const geom of geometries)geom.dispose?.();
+    for(const tex of textures)tex.dispose?.();
+    for(const mat of materials)mat.dispose?.();
+   }catch(error){
+    const record={filename:file.name,artistId:artist.id,artistName:artist.name,status:'error',error:error.message};
+    batchRecords.push(record);addBatchResult(record);
+   }
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
+  const ok=batchRecords.filter(r=>r.status==='analyzed').length;
+  $('#batchProgress').textContent=ok+'/'+files.length+' GLB analysés · '+(files.length-ok)+' erreurs. Rapports non publiés.';
+  $('#exportBatch').disabled=!batchRecords.length;
+ }finally{batchBusy=false;$('#runBatch').disabled=false}
+}
+$('#runBatch').addEventListener('click',analyzeGLBBatch);
+$('#exportBatch').addEventListener('click',()=>{
+ if(!batchRecords.length)return;
+ const payload=summarizeBatch(batchRecords);
+ const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='warlike-seven-avatar-audit.json';link.click();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+});
 $('#copyMeshyTask').addEventListener('click',async()=>{
  const entry=meshyByArtist.get($('#artist').value);if(!entry)return;
  try{await navigator.clipboard.writeText(entry.texturedTaskId);$('#meshyModelStatus').textContent='Identifiant Meshy copié pour '+entry.name+'.'}
