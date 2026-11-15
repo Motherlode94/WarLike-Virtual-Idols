@@ -52,7 +52,7 @@ test('Character Lab UI integrates audit and orbit controls',async()=>{
  const {readFileSync}=await import('node:fs');
  const html=readFileSync(new URL('../studio.html',import.meta.url),'utf8');
  const script=readFileSync(new URL('../studio.js',import.meta.url),'utf8');
- for(const id of ['avatarMetrics','avatarIssues','downloadAvatarAudit','resetCamera'])assert.ok(html.includes('id="'+id+'"'));
+ for(const id of ['avatarMetrics','avatarIssues','downloadAvatarAudit','resetCamera','meshyModelStatus','copyMeshyTask'])assert.ok(html.includes('id="'+id+'"'));
  assert.match(script,/OrbitControls/);
  assert.match(script,/analyzeAvatar\(imported,clips\)/);
  assert.match(script,/showAvatarAudit\(lastAudit\)/);
