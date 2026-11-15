@@ -11,3 +11,13 @@
 .avatar-issues .avatar-error{border-color:#ed8e98}
 .avatar-issues .avatar-warning{border-color:#edc482}
 @media(max-width:620px){.avatar-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.avatar-qa{padding:12px}}
+
+.avatar-batch{margin:18px 0;padding:18px;border:1px solid #736288;border-radius:14px;background:#1b1b30}
+.avatar-batch h3{margin:0 0 6px;font-size:20px}
+.avatar-batch>label{display:grid;gap:7px;font-size:12px;font-weight:700;margin:15px 0}
+.avatar-batch input[type=file]{width:100%}
+.batch-results{display:grid;gap:8px;margin:12px 0}
+.batch-row{border:1px solid #5f5273;background:#29243d;padding:12px;border-radius:10px}
+.batch-row strong{font-size:13px;overflow-wrap:anywhere}
+.batch-row p{font-size:12px;margin:6px 0;overflow-wrap:anywhere}
+@media(max-width:620px){.avatar-batch{padding:12px}.batch-row{padding:10px}}
