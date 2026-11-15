@@ -26,6 +26,7 @@ jobs:
           test -s studio.html
           test -s studio.js
           test -s studio.css
+          test -s assets/meshy-avatar-roster.json
           grep -q 'studio.js' studio.html
           grep -q 'styles.css' index.html
           grep -q 'app.js' index.html
