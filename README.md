@@ -48,3 +48,12 @@ Ouvrir `studio.html` pour accéder aux quatre modules :
 - Avant toute administration publique : branchement WarLike Keys, contrôle RBAC côté serveur, journal d'audit, permissions médias R2/D1, sauvegardes, modération et validation des publications.
 
 Tests : `node --check studio.js` puis `node --test tests/*.test.mjs`. Valider aussi les parcours WebGL, audio et GLB dans un navigateur réel avant fusion.
+
+
+## Character Lab — Rig & Facial Preview v1
+
+Le studio ajoute un panneau d'audit des modèles GLB importés : comptage des os, maillages skinnés, animations et morph targets, détection des os attendus (hips/spine/head/bras/jambes), lecture des clips embarqués, contrôle des expressions et aperçu des visèmes `A/E/O`. Les contrôles n'ajoutent pas de rig aux modèles non riggés. Le prévisualiseur des visèmes utilise une approximation textuelle à cadence fixe, **pas** un alignement phonétique ou une synchronisation de voix chantée.
+
+**Important :** les véritables avatars identitaires des sept artistes ne sont pas encore disponibles dans ce dépôt. Leur création réclame des fichiers source autorisés, une topologie/skinning corrects, les morph targets faciaux et des animations testées. Ne pas déclarer les profils et mannequins de démonstration comme des modèles finaux.
+
+Tests : `node --test tests/rig-facial.test.mjs` et `node --test tests/*.test.mjs`.
