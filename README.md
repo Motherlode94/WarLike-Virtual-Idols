@@ -103,3 +103,10 @@ WarLike Idol Production Suite prend en charge un **fichier audio local** MP3/WAV
 Pour un clip fini : créer les visèmes sur les sept visages, produire et autoriser les enregistrements originaux, préparer des pistes de visèmes synchronisées sur les voix isolées, puis valider l'animation avec la piste mixée et le GLB riggé.
 
 Tests : `node --test tests/audio-lipsync.test.mjs`. Un test avec un véritable enregistrement et un GLB doté de visèmes est encore nécessaire.
+
+
+## Couches faciales indépendantes V2
+
+Le chant anime une couche dédiée aux visèmes tandis que les expressions `smile`, `blink` et `surprise` restent contrôlables indépendamment. Sur une cible morphologique partagée (ex. jawOpen), la couche de bouche est prioritaire. Les morph targets personnalisés non reconnus ne sont pas écrasés. Quand l'audio s'arrête, la bouche retourne au repos tout en conservant l'expression. Les visèmes doivent **déjà exister** dans les GLB ; cela ne crée ni visage riggé ni reconnaissance phonétique automatique.
+
+Tests : `node --test tests/facial-layers.test.mjs`.
